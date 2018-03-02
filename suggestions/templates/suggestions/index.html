@@ -1,0 +1,183 @@
+{% extends 'base.html' %}
+
+{% if error_message %}<p><strong>{{ error_message }}</strong></p>{% endif %}
+
+
+{% block title %}Suggestions{% endblock %}
+
+{% block content %}
+<p>Hello {{user.get_username }}, click here to <a href=/logout/>logout</a>
+</p>
+<h2>Suggestions</h2>
+<div id="message">{% if not selected_video %}Please select a video from the list...{% endif %}</div>
+{% csrf_token %}
+<div style="display:flex; flex-direction:row">
+  <div style="width: 430px; padding: 5px 5px 5px 5px;">
+    <iframe id="video" width="420" height="315" src=" {{ src }} "></iframe>
+    <div style="text-align:right">
+      <a class="thumbs_up" href="/set_preference/"><img class="thumbs_up_icon" src="{{ STATIC_URL }} {{ thumbs_up_icon }}"></a>
+      <a class="thumbs_down" href="/set_preference/"><img class="thumbs_down_icon" src="{{ STATIC_URL }} {{ thumbs_down_icon }}"></a>
+    </div>
+  </div>
+  <div style="width: 430px; flex:none; padding: 5px 5px 5px 5px;">
+    <select id="video_select" size= "50" multiple="multiple" style="height:315px">
+      {% for v in video_list%}
+      <option value="{{v.video}}" {% if v.video == selected_video %}selected="selected"{% endif %}>{{ v.name }} </option>
+      {% endfor %}
+    </select>
+  </div>
+</div>
+
+<div style="display:flex; flex-direction:column; padding: 5px 5px 5px 5px;">
+  <div style="display:flex; flex-direction:row">
+    <span style="padding: 2px">Plot: </span><span id="video_plot" style="padding: 2px"></span>
+  </div>
+  <div style="display:flex; flex-direction:row">
+    <span style="padding: 2px">Genres: </span><span id="video_genres" style="padding: 2px"></span>
+  </div>
+  <div style="display:flex; flex-direction:row">
+    <span style="padding: 2px">Rated: </span><span id="video_rated" style="padding: 2px"></span>
+  </div>
+  <div style="display:flex; flex-direction:row">
+    <span style="padding: 2px">Released: </span><span id="video_released" style="padding: 2px"></span>
+  </div>
+  <div style="display:flex; flex-direction:row">
+    <span style="padding: 2px">Runtime: </span><span id="video_runtime" style="padding: 2px"></span>
+  </div>
+  <div style="display:flex; flex-direction:row">
+    <span style="padding: 2px">Director: </span><span id="video_director" style="padding: 2px"></span>
+  </div>
+  <div style="display:flex; flex-direction:row">
+    <span style="padding: 2px">Writer: </span><span id="video_writer" style="padding: 2px"></span>
+  </div>
+  <div style="display:flex; flex-direction:row">
+    <span style="padding: 2px">Actors: </span><span id="video_actors" style="padding: 2px"></span>
+  </div>
+  <div style="display:flex; flex-direction:row">
+    <span style="padding: 2px">Languages: </span><span id="video_languages" style="padding: 2px"></span>
+  </div>
+  <div style="display:flex; flex-direction:row">
+    <span style="padding: 2px">Country: </span><span id="video_country" style="padding: 2px"></span>
+  </div>
+  <div style="display:flex; flex-direction:row">
+    <span style="padding: 2px">Awards: </span><span id="video_awards" style="padding: 2px"></span>
+  </div>
+</div>
+
+
+{% if user.is_superuser %}
+<div style="display:flex; flex-direction:row">
+  <div>
+    Upload JSON file with suggestions
+    <form name = "form" enctype = "multipart/form-data" action = "/suggestions/set_suggestions/" method = "POST" >
+      {% csrf_token %}
+      <input type = "file" name = "json_file" />
+      <button type = "submit" value = "upload" >
+        <strong>Upload</strong>
+      </button>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+
+<script type="text/javascript" src="{{ STATIC_URL }} /static/jquery-3.2.1.min.js">
+</script> 
+
+<script type="text/javascript">
+  $(document).ready(function(){
+    $("#video_select").change(function(){
+      $("#video").attr("src", "https://www.youtube.com/embed/" + $("#video_select option:selected").val());
+      $("#message").html("");
+      
+      $.ajaxSetup({
+        headers: { "X-CSRFToken": '{{csrf_token}}' }
+      });
+      $.post("/get_preference/", { 'video': $("#video_select option:selected").val()}, function(data) {
+        // Set the thumbs icon according to preferece, -1 for down, 0 for neutral and 1 for thumbs up
+        if(data == '1')
+        {
+          // Thumbs up
+          $("img.thumbs_up_icon").attr("src", "{{ STATIC_URL }} /static/img/green_thumbs_up_medium.png");
+          $("img.thumbs_down_icon").attr("src", "{{ STATIC_URL }} /static/img/grey_thumbs_down_medium.png");
+        }
+        else if(data == '-1')
+        {
+          // Thumbs down
+          $("img.thumbs_up_icon").attr("src", "{{ STATIC_URL }} /static/img/grey_thumbs_up_medium.png");
+          $("img.thumbs_down_icon").attr("src", "{{ STATIC_URL }} /static/img/red_thumbs_down_medium.png");
+        }
+        else if(data == '0')
+        {
+          // Thumbs to neutral
+          $("img.thumbs_up_icon").attr("src", "{{ STATIC_URL }} /static/img/grey_thumbs_up_medium.png");
+          $("img.thumbs_down_icon").attr("src", "{{ STATIC_URL }} /static/img/grey_thumbs_down_medium.png");
+        }
+        else
+        {
+          // Set the thumbs to neutral during an error
+          $("img.thumbs_up_icon").attr("src", "{{ STATIC_URL }} /static/img/grey_thumbs_up_medium.png");
+          $("img.thumbs_down_icon").attr("src", "{{ STATIC_URL }} /static/img/grey_thumbs_down_medium.png");
+          $("#message").html("An error has occured: " + data);
+        }
+      });
+      
+      $.post("/get_video_details/", { 'video': $("#video_select option:selected").val()}, function(data) {
+        var obj = JSON.parse(data)[0];
+        if(obj)
+          $("#video_rated").html(obj.fields.rated);
+          $("#video_released").html(obj.fields.released);
+          $("#video_runtime").html(obj.fields.runtime);
+          $("#video_genres").html(obj.fields.genres);
+          $("#video_director").html(obj.fields.director);
+          $("#video_writer").html(obj.fields.writer);
+          $("#video_plot").html(obj.fields.plot);
+          $("#video_languages").html(obj.fields.languages);
+          $("#video_country").html(obj.fields.country);
+          $("#video_awards").html(obj.fields.awards);
+          //$("#message").html(data);
+      });
+      // Return false in order not to reload the page, we are just doing a DOM change here
+      return false;
+    });
+    
+    $("a.thumbs_up").bind("click", function(){
+      var link = $(this).attr("href");
+
+      $.ajaxSetup({
+        // CSRF is required by django
+        headers: { "X-CSRFToken": '{{csrf_token}}' }
+      });
+      // Perform a POST request to set the preference for this video
+      // TODO Correctly set the STATIC_URL variable to make the following shorter
+      $.post(link, { 'video': $("#video_select option:selected").val(), 
+                     'preference': $("img.thumbs_up_icon").attr("src") == "{{ STATIC_URL }} /static/img/grey_thumbs_up_medium.png" ? '1' : '0'}, function(data) {
+        if(data == 'ok')
+        {
+          $("img.thumbs_up_icon").attr("src", $("img.thumbs_up_icon").attr("src") == "{{ STATIC_URL }} /static/img/green_thumbs_up_medium.png" ? "{{ STATIC_URL }} /static/img/grey_thumbs_up_medium.png": "{{ STATIC_URL }} /static/img/green_thumbs_up_medium.png");
+          $("img.thumbs_down_icon").attr("src", "{{ STATIC_URL }} /static/img/grey_thumbs_down_medium.png");
+        }
+      });
+      return false;
+    });
+
+    $("a.thumbs_down").bind("click", function(){
+      var link = $(this).attr("href");
+
+      // It's the same as above...
+      $.ajaxSetup({
+        headers: { "X-CSRFToken": '{{csrf_token}}' }
+      });
+      $.post(link, { 'video': $("#video_select option:selected").val(), 
+                     'preference': $("img.thumbs_down_icon").attr("src") == "{{ STATIC_URL }} /static/img/grey_thumbs_down_medium.png" ? '-1' : '0'}, function(data) {
+        if(data == 'ok')
+        {
+          $("img.thumbs_down_icon").attr("src", $("img.thumbs_down_icon").attr("src") == "{{ STATIC_URL }} /static/img/red_thumbs_down_medium.png" ? "{{ STATIC_URL }} /static/img/grey_thumbs_down_medium.png": "{{ STATIC_URL }} /static/img/red_thumbs_down_medium.png");
+          $("img.thumbs_up_icon").attr("src", "{{ STATIC_URL }} /static/img/grey_thumbs_up_medium.png");
+        }
+      });
+      return false;
+    });
+  });
+</script>
+{% endblock %}
