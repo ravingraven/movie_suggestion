@@ -20,7 +20,7 @@ class Suggestion(models.Model):
         return self.name
 
 class Preference(models.Model):
-    PREFERENCES = (('0', 'none'), ('1', 'like'), ('2', 'dislike'))
+    PREFERENCES = (('0', 'none'), ('1', 'like'), ('-1', 'dislike'))
 
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     name = models.CharField(max_length=200)
