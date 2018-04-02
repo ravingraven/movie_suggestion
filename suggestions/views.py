@@ -46,8 +46,7 @@ def get_preferences(request):
         # Print all preferences
         res = ""
         for obj in Preference.objects.filter(user=request.user):
-            if obj.preference != '0':
-                res += obj.video + "," + obj.preference + "</br>"
+            res += obj.video + "," + obj.preference + "</br>"
         return HttpResponse(res)
     else:
         return redirect("/login/")
@@ -62,7 +61,9 @@ def get_preference(request):
         if obj:
             return HttpResponse(obj[0].preference)
         else:
-            # Return neutral on unknown
+            # Set and return neutral on unknown
+            p = Preference(user=request.user, name='', video=request.POST.get('video'), preference='0')
+            p.save()
             return HttpResponse('0')
     else:
         return HttpResponse('error')
